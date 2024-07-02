@@ -1,79 +1,90 @@
-import './Board.css'
-import { useAppContext }from '../../contexts/Context'
+import "./Board.css";
+import { useAppContext } from "../../contexts/Context";
 
-import Ranks from './bits/Ranks'
-import Files from './bits/Files'
-import Pieces from '../Pieces/Pieces'
-import PromotionBox from '../Popup/PromotionBox/PromotionBox'
-import Popup from '../Popup/Popup'
-import GameEnds from '../Popup/GameEnds/GameEnds'
+import Ranks from "./bits/Ranks";
+import Files from "./bits/Files";
+import Pieces from "../Pieces/Pieces";
+import PromotionBox from "../Popup/PromotionBox/PromotionBox";
+import Popup from "../Popup/Popup";
+import GameEnds from "../Popup/GameEnds/GameEnds";
 
-import arbiter from '../../arbiter/arbiter'
-import { getKingPosition } from '../../arbiter/getMoves'
+import arbiter from "../../arbiter/arbiter";
+import { getKingPosition } from "../../arbiter/getMoves";
 
 const Board = () => {
-    const ranks = Array(8).fill().map((x,i) => 8-i)
-    const files = Array(8).fill().map((x,i) => i+1)
+  const ranks = Array(8)
+    .fill()
+    .map((x, i) => 8 - i);
+  const files = Array(8)
+    .fill()
+    .map((x, i) => i + 1);
 
-    const { appState } = useAppContext();
-    const position = appState.position[appState.position.length - 1]
+  const { appState } = useAppContext();
+  const position = appState.position[appState.position.length - 1];
 
-    const checkTile = (() => {
-        const isInCheck =  (arbiter.isPlayerInCheck({
-            positionAfterMove : position,
-            player : appState.turn
-        }))
+  const lastMoveTiles =
+    appState.lastMoveTiles[appState.lastMoveTiles.length - 1];
 
-        if (isInCheck)
-            return getKingPosition (position, appState.turn)
+  const checkTile = (() => {
+    const isInCheck = arbiter.isPlayerInCheck({
+      positionAfterMove: position,
+      player: appState.turn,
+    });
 
-        return null
-    })()
+    if (isInCheck) return getKingPosition(position, appState.turn);
 
-    const getClassName = (i,j) => {
-        let c = 'tile'
-        c+= (i+j)%2 === 0 ? ' tile--dark ' : ' tile--light '
-        if (appState.candidateMoves?.find(m => m[0] === i && m[1] === j)){
-            if (position[i][j])
-                c+= ' attacking'
-            else 
-                c+= ' highlight'
-        }
+    return null;
+  })();
 
-        if (checkTile && checkTile[0] === i && checkTile[1] === j) {
-            c+= ' checked'
-        }
-
-        return c
+  const getClassName = (i, j) => {
+    let c = "tile";
+    c += (i + j) % 2 === 0 ? " tile--dark " : " tile--light ";
+    if (appState.candidateMoves?.find((m) => m[0] === i && m[1] === j)) {
+      if (position[i][j]) c += " attacking";
+      else c += " highlight";
     }
 
-    return <div className='board'>
+    if (
+      (lastMoveTiles?.[0] == i && lastMoveTiles?.[1] == j) ||
+      (lastMoveTiles?.[2] == i && lastMoveTiles?.[3] == j)
+    ) {
+      c += " last-move";
+    }
 
-        <Ranks ranks={ranks}/>
+    if (checkTile && checkTile[0] === i && checkTile[1] === j) {
+      c += " checked";
+    }
 
-        <div className='tiles'>
-            {ranks.map((rank,i) => 
-                files.map((file,j) => 
-                    <div 
-                        key={file+''+rank} 
-                        i={i}
-                        j={j}
-                        className={`${getClassName(7-i,j)}`}>
-                    </div>
-                ))}
-        </div>
+    return c;
+  };
 
-        <Pieces/>
+  return (
+    <div className="board">
+      <Ranks ranks={ranks} />
 
-        <Popup>
-            <PromotionBox />
-            <GameEnds />
-        </Popup>
+      <div className="tiles">
+        {ranks.map((rank, i) =>
+          files.map((file, j) => (
+            <div
+              key={file + "" + rank}
+              i={i}
+              j={j}
+              className={`${getClassName(7 - i, j)}`}
+            ></div>
+          ))
+        )}
+      </div>
 
-        <Files files={files}/>
+      <Pieces />
 
+      <Popup>
+        <PromotionBox />
+        <GameEnds />
+      </Popup>
+
+      <Files files={files} />
     </div>
-    
-}
+  );
+};
 
-export default Board
+export default Board;
