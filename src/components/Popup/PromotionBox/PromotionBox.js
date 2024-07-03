@@ -2,6 +2,8 @@ import { useAppContext } from "../../../contexts/Context";
 import { copyPosition, getNewMoveNotation } from "../../../helper";
 import { makeNewMove, clearCandidates } from "../../../reducer/actions/move";
 import "./PromotionBox.css";
+import * as SVGs from "../../../assets/SVGs";
+import React from "react";
 
 const PromotionBox = ({ onClosePopup }) => {
   const { appState, dispatch } = useAppContext();
@@ -11,6 +13,11 @@ const PromotionBox = ({ onClosePopup }) => {
 
   const color = promotionSquare.x === 7 ? "w" : "b";
   const options = ["q", "r", "b", "n"];
+
+  const WhitePieces = [SVGs.WQ, SVGs.WR, SVGs.WB, SVGs.WN];
+  const BlackPieces = [SVGs.BQ, SVGs.BR, SVGs.BB, SVGs.BN];
+
+  const pieces = color === "w" ? WhitePieces : BlackPieces;
 
   const getPromotionBoxPosition = () => {
     let style = {};
@@ -66,12 +73,14 @@ const PromotionBox = ({ onClosePopup }) => {
       className="popup--inner promotion-choices"
       style={getPromotionBoxPosition()}
     >
-      {options.map((option) => (
+      {options.map((option, key) => (
         <div
           key={option}
           onClick={() => onClick(option)}
           className={`piece ${color}${option}`}
-        />
+        >
+          {React.createElement(pieces[key])}
+        </div>
       ))}
     </div>
   );
