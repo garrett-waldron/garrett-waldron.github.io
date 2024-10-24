@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <style>
+        body {
+            display: flex; /* Use Flexbox to center items */
+            flex-direction: column; /* Stack children vertically */
+            align-items: center; /* Center children horizontally */
+            justify-content: center; /* Center children vertically */
+            height: 100vh; /* Take full viewport height */
+            margin: 0; /* Remove default margin */
+            background: black; /* Set a background color if needed */
+        }
+        canvas {
+            border: 4px solid #13aacf;
+            display: block;
+            background-image: url(galaxy.jpg);
+            background-size: cover;
+        }
+        button{
+            margin: 2px;
+            color: black;
+            border: 5px solid blue;
+            background-color: #13aacf;
+        }
+        p{
+            text-align: center;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <button id="PlayButton">Play Game/Restart</button>
+    <button id="PauseButton">Pause</button>
+    <button id="RestartButton" style="display:none;">Restart</button>
+    <button id="DifficultyUp">Difficulty Up</button>
+    <button id="DifficultyDown">Difficulty Down</button>
+  
+
+   
+
+    <script>
+        const backgroundMusic = new Audio('background.mp3');
+        backgroundMusic.volume = 0.5;
+        let speedFactor = 20;
+        let paused = false;
+        let obstacleSpeed = 1;
+        let myGamePiece;
+        let myObstacles = [];
+        let myScore;
+        let myEnemies = [];
+        let velocityX=0;
+        let velocityY=0;
+        let lastFrameTime = 0;
+        let frameId = null;
+        let spawnRate = 100;
+        let difficultyLevel = 1;
+        const jumpSound = new Audio('jump.mp3');
+        const collideSound = new Audio('fart.mp3');
+
+        const myGameArea = {
+            canvas: document.createElement("canvas"),
+            start: function() {
+                this.canvas.width = 800; // Responsive width
+                this.canvas.height = 400;
+                document.body.appendChild(this.canvas);
+                this.context = this.canvas.getContext("2d");
+                this.frameNo = 0;
+            },
+            clear: function() {
+                this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+        };
+
+        function startGame() {
+            myGamePiece = new gameObject(30, 30, "blue", 10, 120);
+            myGamePiece.image = new Image();
+            myGamePiece.image.src = 'SpaceShip.png';
+            myScore = new gameObject("30px", "Consolas", "white", 280, 40, "text");
+            myObstacles = [];
+            myGameArea.start();
+            playGame();
+            playMusic();
+
+            window.addEventListener('keydown', handleKeyPress);
+
+  
+
+            document.getElementById('RestartButton').style.display = 'none';
+        }
+
+        
+        function gameObject(width, height, color, x, y, type) {
+            this.type = type;
+            this.width = width;
+            this.height = height;
+            this.x = x;
+            this.y = y;
+            this.gravity = 0;
+            this.gravitySpeed = 0;
+            this.text = "";
+            this.update = function() {
+                const ctx = myGameArea.context;
+                if (this.type == "text") {
+                    ctx.font = this.width + " " + this.height;
+                    ctx.fillStyle = color;
+                    ctx.fillText(this.text, this.x, this.y);
+                } else if (this.image) {
+                    ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+                } else {
+                    ctx.fillStyle = color;
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                }
+            };
+            this.newPos = function() {
+                this.gravitySpeed += this.gravity;
+                this.y += this.gravitySpeed;
+                this.x += velocityX;  // Use velocityX
+                this.y += velocityY;  // Use velocityY
+                this.hitBottom();
+                const canvasWidth = myGameArea.canvas.width;
+                const canvasHeight = myGameArea.canvas.height;
+                
+                // Check for left boundary
+                if (this.x < 0) {
+                    this.x = 0;
+                }
+                // Check for right boundary
+                if (this.x + this.width > canvasWidth) {
+                    this.x = canvasWidth - this.width;
+                }
+                // Check for top boundary
+                if (this.y < 0) {
+                    this.y = 0;
+                }
+                // Check for bottom boundary
+                if (this.y + this.height > canvasHeight) {
+                    this.y = canvasHeight - this.height;
+                }
+        };
+    this.hitBottom = function() {
+        const rockbottom = myGameArea.canvas.height - this.height;
+        if (this.y > rockbottom) {
+            this.y = rockbottom;
+            this.gravitySpeed = 0;
+        }
+            };
+            this.hitBottom = function() {
+                const rockbottom = myGameArea.canvas.height - this.height;
+                if (this.y > rockbottom) {
+                    this.y = rockbottom;
+                    this.gravitySpeed = 0;
+                }
+            };
+            this.crashWith = function(otherobj) {
+                const myleft = this.x;
+                const myright = this.x + this.width;
+                const mytop = this.y;
+                const mybottom = this.y + this.height;
+                const otherleft = otherobj.x;
+                const otherright = otherobj.x + otherobj.width;
+                const othertop = otherobj.y;
+                const otherbottom = otherobj.y + otherobj.height;
+                return !(mybottom < othertop || mytop > otherbottom || myright < otherleft || myleft > otherright);
+            };
+        }
+        
+        function Enemy(width, height, x, y) {
+            this.width = width;
+            this.height = height;
+            this.x = x;
+            this.y = y;
+            this.speedX = -2;
+
+            this.image = new Image(); // Assign the image for the Enemy
+            this.image.src = 'aliens.png';
+
+    this.update = function() {
+        const ctx = myGameArea.context;
+        if (this.image.complete) {
+            ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
+        } else {
+            ctx.fillStyle = "red"; // Fallback color if the image fails to load
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+        }
+    }
+
+    this.newPos = function() {
+        this.x += this.speedX;
+    }
+}
+
+        // Define flags for key presses
+    let keys = {
+        ArrowUp: false,
+        ArrowDown: false,
+        ArrowLeft: false,
+        ArrowRight: false,
+        w: false,
+        a: false,
+        s: false,
+        d: false
+    };
+
+    // Update key press states
+    window.addEventListener('keydown', function (e) {
+        if (keys.hasOwnProperty(e.key)) {
+            keys[e.key] = true;
+        }
+    });
+
+    // Update key release states
+    window.addEventListener('keyup', function (e) {
+        if (keys.hasOwnProperty(e.key)) {
+            keys[e.key] = false;
+        }
+    });
+
+        function updateGameArea() {
+            myGameArea.clear();
+            myGameArea.frameNo += 1;
+             // Move the game piece based on key flags
+            if (keys.ArrowUp || keys.w) {
+                myGamePiece.y -=2.5;
+            }
+            if (keys.ArrowDown || keys.s) {
+                myGamePiece.y +=2.5;
+            }
+            if (keys.ArrowLeft || keys.a) {
+                myGamePiece.x -=2.5;
+            }
+            if (keys.ArrowRight || keys.d) {
+                myGamePiece.x +=2.5;
+            }
+            if(myGameArea.frameNo > 1000 && speedFactor > 10){
+                speedFactor -=1;
+                clearInterval(myGameArea.interval);
+                myGameArea.interval = setInterval(updateGameArea,speedFactor);
+            }
+            for (let i = 0; i < myObstacles.length; i++) {
+                if (myGamePiece.crashWith(myObstacles[i])) {
+                    collideSound.play();
+                    stopMusic();
+                    alert("You lose! Your score: " + myGameArea.frameNo);
+                    clearInterval(myGameArea.interval); 
+                    document.getElementById('RestartButton').style.display = 'block'; // Show restart button
+                    return;
+                }
+            }
+            for (let i = 0; i < myEnemies.length; i++) {
+                if (myGamePiece.crashWith(myEnemies[i])) {
+                    collideSound.play();
+                    stopMusic();
+                    alert("You hit an Enemy! Your score: " + myGameArea.frameNo);
+                    clearInterval(myGameArea.interval); 
+                    document.getElementById('RestartButton').style.display = 'block';
+                    return;
+                }
+            }
+            if (myGameArea.frameNo == 1 || everyinterval(150)) {
+                let x = myGameArea.canvas.width;
+                let height = Math.floor(Math.random() * 200) + 20;
+                let gap = Math.floor(Math.random() * 150) + 50;
+
+                let obstacle1 = new gameObject(10, height, "green", x, 0);
+                let obstacle2 = new gameObject(10, myGameArea.canvas.height - height - gap, "green", x, height + gap);
+                obstacle1.image = new Image();
+                obstacle1.image.src= 'Pole.png';
+                obstacle2.image = new Image();
+                obstacle2.image.src= 'Pole-top.png';
+                myObstacles.push(obstacle1);
+                myObstacles.push(obstacle2);
+            }
+            if(myGameArea.frameNo % spawnRate === 0){
+                let myEnemy = new Enemy(15,15,myGameArea.canvas.width, Math.random() *(myGameArea.canvas.height - 30));
+                myEnemies.push(myEnemy);
+                console.log('New enemy added:', myEnemy);
+            }
+            for (let i = 0; i < myObstacles.length; i++) {
+                myObstacles[i].x += -1;
+                myObstacles[i].update();
+            }
+            for( let i =0; i <myEnemies.length; i++){
+                myEnemies[i].newPos();
+                myEnemies[i].update();
+            }
+            myGamePiece.newPos();
+            myGamePiece.update();
+            myScore.text= "SCORE: " + myGameArea.frameNo;
+            myScore.update();
+        }
+        function playMusic(){
+            backgroundMusic.loop = true; //loop music
+            backgroundMusic.play();
+        }    
+        function stopMusic(){
+            backgroundMusic.pause();
+            backgroundMusic.currentTime = 0; //Reset Song
+        }     
+        function everyinterval(n) {
+            return (myGameArea.frameNo / n) % 1 === 0;
+        }
+        function accelerate(amount,axis) {
+            if (axis === 'x') {
+                velocityX += amount;
+            } 
+            else if (axis === 'y') {
+                velocityY += amount;
+            }
+            myGamePiece.x += velocityX;
+            myGamePiece.y += velocityY;
+        }
+        document.getElementById('DifficultyUp').addEventListener('click', function() {
+            if (difficultyLevel == 9){
+                difficultyLevel = 9;
+            } 
+            else{
+                difficultyLevel += 1; // Increase difficulty level
+                spawnRate = Math.max(10, spawnRate - 10); // increase spawn rate, limit to a minimum
+                updateDifficultyDisplay();
+            }
+            
+        });
+        document.getElementById('DifficultyDown').addEventListener('click', function() {
+            if (difficultyLevel == 1){
+                difficultyLevel = 1;
+            } 
+            else{
+            difficultyLevel -= 1; // decrease difficulty level
+            spawnRate = Math.min(100, spawnRate + 10); // Decrease spawn rate, limit to a max
+            updateDifficultyDisplay();
+            }
+        });
+        function updateDifficultyDisplay() {
+        document.getElementById('difficultyLevelDisplay').textContent = "Difficulty Level: " + difficultyLevel;
+        }
+        document.getElementById('PlayButton').addEventListener('click', startGame);
+        document.getElementById('PauseButton').addEventListener('click', function() {
+            if (paused) {
+                playGame();
+                this.textContent = "Pause";
+
+            } else {
+                Pause();
+                this.textContent = "Unpause";
+            }
+            paused = !paused;
+        });
+        document.getElementById('RestartButton').addEventListener('click', function() {
+            myGameArea.clear();
+            myGameArea.frameNo = 0;
+            myObstacles = [];
+            myEnemies = [];
+            speedFactor = 20;
+            velocityX=0;
+            velocityY=0;
+            clearInterval(myGameArea.interval);
+
+
+            startGame(); // Restart the game
+        });
+        function Pause() {
+            clearInterval(myGameArea.interval);
+            myGameArea.interval = null;
+        }
+        function playGame() {
+            if (!myGameArea.interval) {
+            myGameArea.interval = setInterval(updateGameArea,speedFactor);
+            
+        }
+      }
+          <p id="difficultyLevelDisplay" style="color: white;">Difficulty Level: 1</p>
+    </script>
+</body>
+</html>
+        
