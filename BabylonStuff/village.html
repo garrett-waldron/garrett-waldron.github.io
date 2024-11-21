@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Babylon.js Village </title>
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylon.glTF2FileLoader.js"></script>
+    <script src="https://cdn.babylonjs.com/serializers/babylon.glTFSerializer.js"></script>
+</head>
+<body>
+    <canvas id="renderCanvas" style="width: 100%; height: 100%;"></canvas>
+    <button id="downloadButton" style="position: absolute; top: 20px; left: 20px; z-index: 10;">Download Stickman GLB</button>
+    
+    <script>
+        var canvas = document.getElementById("renderCanvas");
+        var engine = new BABYLON.Engine(canvas, true);
+        
+        
+
+
+        const createScene = function () {
+            
+            
+        
+
+            const scene = new BABYLON.Scene(engine);
+
+            var ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 206, height: 206, subdivisions: 16 }, scene);
+            var lavaMaterial = new BABYLON.StandardMaterial("lava", scene);
+
+
+            lavaMaterial.diffuseTexture = new BABYLON.Texture("https://assets.babylonjs.com/environments/villageheightmap.png", scene);
+            lavaMaterial.emissiveColor = new BABYLON.Color3(1, 0.5, 0); // Orange glow
+            lavaMaterial.diffuseTexture.uScale = 10; // Tiling for better effect
+            lavaMaterial.diffuseTexture.vScale = 10;
+
+
+            ground.material = lavaMaterial; // Default to (0,0,0) black. Represents the color of the fog displayed on the lava ground.
+
+
+            const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI / 1.5, Math.PI / 2.2, 15, new BABYLON.Vector3(0, 0, 0));
+            camera.attachControl(canvas, true);
+            const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0));
+
+            
+
+            // BABYLON.SceneLoader.ImportMeshAsync("", "https://assets.babylonjs.com/meshes/", "village.glb");
+     
+            
+            const walk = function (turn, dist) {
+                this.turn = turn;
+                this.dist = dist;
+            }
+            
+            const track = [];
+            track.push(new walk(86, 7));
+            track.push(new walk(-85, 10));
+            track.push(new walk(-93, 15));
+            track.push(new walk(48, 20));
+            track.push(new walk(-112, 25));
+            track.push(new walk(-72, 30));
+            track.push(new walk(42, 35));
+            track.push(new walk(-98, 40));
+            track.push(new walk(0, 47))
+
+            BABYLON.SceneLoader.ImportMeshAsync("him", "./", "Dude.babylon", scene).then((result) => {
+                var dude = result.meshes[0];
+                dude.scaling = new BABYLON.Vector3(.125, 0.125, 0.125);
+                    
+                dude.position = new BABYLON.Vector3(-6, 0, 0);
+                dude.rotate(BABYLON.Axis.Y, BABYLON.Tools.ToRadians(-95), BABYLON.Space.LOCAL);
+                const startRotation = dude.rotationQuaternion.clone();    
+                    
+                scene.beginAnimation(result.skeletons[0], 0, 100, true, 1.0);
+
+                let distance = 0;
+                let step = 0.015;
+                let p = 0;
+
+                scene.onBeforeRenderObservable.add(() => {
+                    dude.movePOV(0, 0, step);
+                    distance += step;
+                      
+                    if (distance > track[p].dist) {
+                        
+                        dude.rotate(BABYLON.Axis.Y, BABYLON.Tools.ToRadians(track[p].turn), BABYLON.Space.LOCAL);
+                        p +=1;
+                        p %= track.length; 
+                        if (p === 0) {
+                            distance = 0;
+                            dude.position = new BABYLON.Vector3(-6, 0, 0);
+                            dude.rotationQuaternion = startRotation.clone();
+                        }
+                    }
+                    
+                })
+            });
+var baseSPhere = BABYLON.MeshBuilder.CreateSphere("baseSphere",
+    {
+        diameter: 2.5,
+        segments: 32,
+    }
+, scene);
+
+baseSPhere.position = new BABYLON.Vector3(0,1,0);
+
+var baseMaterial = new BABYLON.StandardMaterial("baseMaterial", scene);
+baseMaterial.diffuseColor = new BABYLON.Color3(1,1,1);
+
+
+var bodySphere = BABYLON.MeshBuilder.CreateSphere("bodySphere", {
+    diameter: 2,
+    segments: 32,
+
+}, scene);
+
+bodySphere.position = new BABYLON.Vector3(0,3,0);
+var bodyMaterial = new BABYLON.StandardMaterial("bodyMaterial", scene);
+bodyMaterial.diffuseColor = new BABYLON.Color3(1, 1, 1); 
+bodySphere.material = bodyMaterial;// Assign material to sphere
+
+var headSphere = BABYLON.MeshBuilder.CreateSphere("headSphere", {
+    diameter: 1.5,
+    segments: 32,
+
+}, scene);
+
+headSphere.position = new BABYLON.Vector3(0,4.5,0);
+var headMaterial = new BABYLON.StandardMaterial("headMaterial", scene);
+headMaterial.diffuseColor = new BABYLON.Color3(1, 1, 1); 
+headSphere.material = headMaterial;// Assign material to sphere
+
+var eye1Sphere = BABYLON.MeshBuilder.CreateSphere("eye1Sphere", {
+    diameter: .25,
+    segments: 32,
+
+}, scene);
+
+eye1Sphere.position = new BABYLON.Vector3(.75,4.5,.25);
+var eye1Material = new BABYLON.StandardMaterial("eye1Material", scene);
+eye1Material.diffuseColor = new BABYLON.Color3(0,0,0); 
+eye1Sphere.material = eye1Material;// Assign material to sphere
+
+var eye2Sphere = BABYLON.MeshBuilder.CreateSphere("eye2Sphere", {
+    diameter: .25,
+    segments: 32,
+
+}, scene);
+
+eye2Sphere.position = new BABYLON.Vector3(.75,4.5,-.25);
+var eye2Material = new BABYLON.StandardMaterial("eye2Material", scene);
+eye2Material.diffuseColor = new BABYLON.Color3(0,0,0); 
+eye2Sphere.material = eye2Material;// Assign material to sphere
+
+ // Create a cone
+var cone = BABYLON.MeshBuilder.CreateCylinder("cone", {
+    diameterTop: 0,       // Top diameter (0 makes it a cone)
+    diameterBottom: .5,    // Bottom diameter
+    height: 1,            // Height of the cone
+    tessellation: 32      // Number of segments (smoothness)
+}, scene);
+
+// Position the cone
+cone.position = new BABYLON.Vector3(1, 4.25, 0); // Place the cone at desired position
+// Rotate the cone around the Y-axis by 45 degrees (PI/4 radians)
+cone.rotate(BABYLON.Axis.Z, Math.PI / -2, BABYLON.Space.LOCAL);
+// Create a material for the cone
+var coneMaterial = new BABYLON.StandardMaterial("coneMaterial", scene);
+coneMaterial.diffuseColor = new BABYLON.Color3(1, .5, 0); // orange
+cone.material = coneMaterial; // Assign material to the cone           
+            
+            // Load the bunny OBJ model
+            BABYLON.SceneLoader.ImportMesh(
+                "",                        // No name filter; load all meshes
+                "./",     // Path to the folder where .obj and .mtl are located
+                "StanfordBunny.obj",           // Name of the OBJ file
+                scene,                     // The scene to import into
+                function (meshes) {        // Callback once loaded
+                    alert("How many meshes?", mesh.length)
+                    // Position the loaded model (optional)
+                    meshes.forEach(mesh => {
+                        mesh.position = new BABYLON.Vector3(0, 0, 0);
+                        meshes.scaling = new BABYLON.Vector3(2, 2, 2); // Scale by factor of 2
+                    });
+                },
+                null,                      // Progress function (optional)
+                function (scene, message, exception) { // Error callback
+                    console.error("Error loading OBJ file:", message, exception);
+                }
+            );
+                   alert("village, dude and bunny should have been loaded with animation.");
+            
+            return scene;
+        };
+
+  
+
+        var scene = createScene();
+
+        engine.runRenderLoop(function () {
+            scene.render();
+        });
+
+        window.addEventListener("resize", function () {
+            engine.resize();
+        });
+
+        // Function to export as GLB
+        function exportToGLB() {
+            BABYLON.GLTF2Export.GLBAsync(scene, "stickman.glb").then((glb) => {
+                glb.downloadFiles();
+            });
+        }
+
+        // Attach export function to the download button
+        document.getElementById("downloadButton").addEventListener("click", exportToGLB);
+        const sound = new BABYLON.Sound("sound", "Collide.mp3", scene,()=>{
+            //Leave time for the sound file to load before playing it
+            sound.play();
+            });
+    
+    
+    </script>
+</body>
+</html>
